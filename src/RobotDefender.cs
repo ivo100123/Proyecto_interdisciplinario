@@ -21,7 +21,7 @@ namespace robot_defender
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
         private Texture2D Gummy;
-          private Texture2D moon;
+        private Texture2D moon;
 
         private Texture2D Base;
 
@@ -131,8 +131,8 @@ namespace robot_defender
         private Microsoft.Xna.Framework.Rectangle hitboxBase;
 
 
-         private SoundEffect Laser1;
-          private SoundEffect Laser2;
+        private SoundEffect Laser1;
+        private SoundEffect Laser2;
         private SoundEffect Walk;
         private Song menuSong;
         private Song gameSong;
@@ -156,8 +156,8 @@ namespace robot_defender
             basededatos.RegistrarJugador(1, "Jugador1", 4000);
 
             hitboxAlien = new Microsoft.Xna.Framework.Rectangle((int)posicion.X, (int)posicion.Y, 32 * 2, 32 * 2);
-            hitboxMapa = new Microsoft.Xna.Framework.Rectangle(0, 10, GraphicsDevice.Viewport.Width, 200);
-            hitboxBase = new Microsoft.Xna.Framework.Rectangle((GraphicsDevice.Viewport.Width / 2) - 100 , (GraphicsDevice.Viewport.Height / 2) - 100 , 200, 250);
+            hitboxMapa = new Microsoft.Xna.Framework.Rectangle(0, 0, GraphicsDevice.Viewport.Width, 300);
+            hitboxBase = new Microsoft.Xna.Framework.Rectangle((GraphicsDevice.Viewport.Width / 2) - 50, (GraphicsDevice.Viewport.Height / 2) - 50, 100, 250);
             IniciarOleada();
 
             // Posiciones de botones del Menú
@@ -411,7 +411,7 @@ namespace robot_defender
                 foreach (Enemigo enemigo in enemigos)
                     _spriteBatch.Draw(_pixel, ObtenerHitbox(enemigo), Microsoft.Xna.Framework.Color.Blue * 0.7f);
 
-                    _spriteBatch.Draw(Base, hitboxBase, Microsoft.Xna.Framework.Color.White);
+                _spriteBatch.Draw(Base, hitboxBase, Microsoft.Xna.Framework.Color.White);
 
                 foreach (Bala bala in balas)
                 {
