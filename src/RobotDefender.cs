@@ -156,7 +156,7 @@ namespace robot_defender
             basededatos.RegistrarJugador(1, "Jugador1", 4000);
 
             hitboxAlien = new Microsoft.Xna.Framework.Rectangle((int)posicion.X, (int)posicion.Y, 32 * 2, 32 * 2);
-            hitboxMapa = new Microsoft.Xna.Framework.Rectangle(0, 0, GraphicsDevice.Viewport.Width, 300);
+            hitboxMapa = new Microsoft.Xna.Framework.Rectangle(0, 0, GraphicsDevice.Viewport.Width, 260);
             hitboxBase = new Microsoft.Xna.Framework.Rectangle((GraphicsDevice.Viewport.Width / 2) - 50, (GraphicsDevice.Viewport.Height / 2) - 50, 100, 250);
             IniciarOleada();
 
