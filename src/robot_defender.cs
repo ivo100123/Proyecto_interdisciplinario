@@ -16,12 +16,12 @@ namespace robot_defender
         private Texture2D moon;
         private Texture2D Base;
 
-        // Texturas para enemigos y balas con spritesheets
-        private Texture2D enemigoAzul;     // Spritesheet para costados (Izquierda / Derecha)
-        private Texture2D crab;            // Spritesheet para arriba y abajo (Arriba / Abajo)
-        private Texture2D laserRojo;       // Láser rojo para el jugador
-        private Texture2D misil;           // Misil común para enemigos laterales
-        private Texture2D laserAzul;       // Láser azul para enemigos verticales
+        
+        private Texture2D enemigoAzul;  
+        private Texture2D crab;           
+        private Texture2D laserRojo;       
+        private Texture2D misil;           
+        private Texture2D laserAzul;      
         private SpriteFont fuenteTexto;
 
         private enum EstadoJuego { Menu, Jugando, Opciones, Pausa }
