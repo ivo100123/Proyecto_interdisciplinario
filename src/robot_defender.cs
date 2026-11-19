@@ -16,12 +16,14 @@ namespace robot_defender
         private Texture2D moon;
         private Texture2D Base;
 
-        
-        private Texture2D enemigoAzul;  
-        private Texture2D crab;           
-        private Texture2D laserRojo;       
-        private Texture2D misil;           
-        private Texture2D laserAzul;      
+        private Texture2D corazonTexture;
+        private int vidasBaseMax = 5;
+
+        private Texture2D enemigoAzul;
+        private Texture2D crab;
+        private Texture2D laserRojo;
+        private Texture2D misil;
+        private Texture2D laserAzul;
         private SpriteFont fuenteTexto;
 
         private enum EstadoJuego { Menu, Jugando, Opciones, Pausa }
@@ -87,20 +89,17 @@ namespace robot_defender
         private readonly List<Bala> balas = new();
         private readonly List<PuntoSpawn> puntosSpawnPendientes = new();
 
-        // Menú Principal
         private Texture2D menuBackground;
         private Texture2D botonStartTexture;
         private Rectangle botonStartRect;
         private Texture2D botonOpcionesTexture;
         private Rectangle botonOpcionesRect;
 
-        // Opciones
         private Texture2D botonVolverTexture;
         private Rectangle botonVolverRect;
         private Texture2D botonMusicaTexture;
         private Rectangle botonMusicaRect;
 
-        // Pausa
         private Texture2D pauseBoxTexture;
         private Rectangle pauseBoxRect;
         private Texture2D botonReanudarTexture;
@@ -151,7 +150,13 @@ namespace robot_defender
         {
             base.Initialize();
 
-            basededatos.RegistrarJugador(1, "Jugador1", 4000);
+            try
+            {
+                basededatos.RegistrarJugador(1, "Jugador1", 4000);
+            }
+            catch (Exception)
+            {
+            }
 
             hitboxAlien = new Rectangle((int)posicion.X, (int)posicion.Y, 32 * 2, 32 * 2);
             hitboxMapa = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, 260);
@@ -224,6 +229,7 @@ namespace robot_defender
             Gummy = Content.Load<Texture2D>("assets/Gum Bot sprites");
             moon = Content.Load<Texture2D>("assets/FONDO");
             Base = Content.Load<Texture2D>("assets/Catbase");
+            corazonTexture = Content.Load<Texture2D>("assets/corazones");
 
             enemigoAzul = Content.Load<Texture2D>("assets/enemigoAzul");
             crab = Content.Load<Texture2D>("assets/crab");
@@ -241,14 +247,13 @@ namespace robot_defender
             _pixel.SetData(new[] { Color.White });
 
             MediaPlayer.Play(menuSong);
-           MediaPlayer.IsRepeating = true;
+            MediaPlayer.IsRepeating = true;
         }
 
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
-
 
             MouseState mouseState = Mouse.GetState();
             Rectangle cursorRect = new Rectangle(mouseState.X, mouseState.Y, 1, 1);
@@ -260,8 +265,8 @@ namespace robot_defender
                 if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
-                   MediaPlayer.Play(menuSong);
-                   MediaPlayer.IsRepeating = true;
+                    MediaPlayer.Play(menuSong);
+                    MediaPlayer.IsRepeating = true;
                 }
 
                 if (cursorRect.Intersects(botonStartRect) && mouseClicked)
@@ -430,33 +435,28 @@ namespace robot_defender
                 {
                     Rectangle sourceRectEnemigo;
 
-                 
                     if (enemigo.Spawn == PuntoSpawn.Izquierda || enemigo.Spawn == PuntoSpawn.Derecha)
                     {
-                       
                         int ancho = enemigoAzul.Width / 17;
                         int alto = enemigoAzul.Height / 7;
 
-                        int indice = enemigo.IndiceAnimacion % 9; //Hasta el noveno sprite
+                        int indice = enemigo.IndiceAnimacion % 9;
 
-                       
                         sourceRectEnemigo = new Rectangle(indice * ancho - 10, 1 * alto, ancho - 20, alto);
 
                         _spriteBatch.Draw(enemigoAzul, ObtenerHitbox(enemigo), sourceRectEnemigo, Color.White);
                     }
                     else
                     {
-                        int ancho = crab.Width / 12; 
-                        int alto = crab.Height / 11; 
+                        int ancho = crab.Width / 12;
+                        int alto = crab.Height / 11;
 
                         if (enemigo.atacando == true)
                         {
-                            
-                            sourceRectEnemigo = new Rectangle( 20, 10 * alto, ancho - 10, alto - 15);
+                            sourceRectEnemigo = new Rectangle(20, 10 * alto, ancho - 10, alto - 15);
                         }
                         else
                         {
-                           
                             int frameIndex = enemigo.IndiceAnimacion % 4;
                             sourceRectEnemigo = new Rectangle(frameIndex * ancho - 10, 4 * alto, ancho - 10, alto - 15);
                         }
@@ -467,6 +467,25 @@ namespace robot_defender
 
                 _spriteBatch.Draw(Base, hitboxBase, Color.White);
 
+                int corazonAncho = 24;
+                int corazonAlto = 24;
+                int espacioEntreCorazones = 4;
+                int anchoTotalCorazones = (vidasBaseMax * corazonAncho) + ((vidasBaseMax - 1) * espacioEntreCorazones);
+                int startX = hitboxBase.X + (hitboxBase.Width / 2) - (anchoTotalCorazones / 2);
+                int startY = hitboxBase.Y - 35;
+
+                for (int i = 0; i < vidasBaseMax; i++)
+                {
+                    Vector2 posicionCorazon = new Vector2(startX + (i * (corazonAncho + espacioEntreCorazones)), startY);
+                    Color colorCorazon = i < vidas ? Color.White : Color.Gray * 0.4f;
+
+                    _spriteBatch.Draw(
+                        corazonTexture,
+                        destinationRectangle: new Rectangle((int)posicionCorazon.X, (int)posicionCorazon.Y, corazonAncho, corazonAlto),
+                        sourceRectangle: null,
+                        color: colorCorazon
+                    );
+                }
 
                 foreach (Bala bala in balas)
                 {
@@ -483,9 +502,7 @@ namespace robot_defender
                     {
                         texturaBala = laserAzul;
                         sourceRectBala = new Rectangle(0, 0, laserAzul.Width, laserAzul.Height);
-
-                       
-                        rotacionBala += MathF.PI * 180f; //le puse 180 para q se de vuelta siempre salia invertido ns pq
+                        rotacionBala += MathF.PI * 180f;
                     }
                     else
                     {
@@ -521,7 +538,6 @@ namespace robot_defender
                         layerDepth: 0f
                     );
                 }
-
 
                 string textoOleada = "Oleada " + OleadaActual;
                 if (dibujarTexto)
