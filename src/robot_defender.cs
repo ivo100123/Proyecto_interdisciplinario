@@ -26,6 +26,8 @@ namespace robot_defender
         private Texture2D laserAzul;
         private SpriteFont fuenteTexto;
 
+        private float tiempoTranscurrido = 0f;
+
         private enum EstadoJuego { Menu, Jugando, Opciones, Pausa }
         private EstadoJuego estadoActual = EstadoJuego.Menu;
 
@@ -55,6 +57,7 @@ namespace robot_defender
             public Vector2 Direccion;
             public bool EsJugador;
             public bool EsLateralEnemigo;
+            public Vector2 OrigenEnemigo;
 
             public Bala(Vector2 posicion, Vector2 direccion, bool esJugador, bool esLateralEnemigo = false)
             {
@@ -62,7 +65,8 @@ namespace robot_defender
                 Direccion = direccion;
                 EsJugador = esJugador;
                 EsLateralEnemigo = esLateralEnemigo;
-            }
+                
+        }
         }
 
         private const int TamañoEnemigo = 40;
@@ -70,9 +74,13 @@ namespace robot_defender
         private const int TamañoBalaEnemigo = 40;
         private float DistanciaAtaqueBase = 100f;
 
+        private int enemigosDestruidos = 0;
+
         private const float IntervaloDisparoEnemigo = 2000f;
         private const int EnemigosActivosIniciales = 4;
         private int ReservasPorOleada = 8;
+
+        private string ultimoatacante;
 
         private bool dibujarTexto = true;
         private int OleadaActual = 1;
@@ -150,13 +158,15 @@ namespace robot_defender
         {
             base.Initialize();
 
-            try
-            {
-                basededatos.RegistrarJugador(1, "Jugador1", 4000);
-            }
-            catch (Exception)
-            {
-            }
+            basededatos.CrearPlayer(0, null);
+            basededatos.CrearSessions(1, null, 1, 0);
+            basededatos.CrearTablaClasificacion(1,basededatos.jugadorActual,basededatos.sesionActual);
+            basededatos.CrearCatalogoEnemigos(1, basededatos.sesionActual);
+            basededatos.CrearEnemyType(1,velocidadGlobal * 0.10f,"crab",1);
+            basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro",1);
+          
+
+
 
             hitboxAlien = new Rectangle((int)posicion.X, (int)posicion.Y, 32 * 2, 32 * 2);
             hitboxMapa = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, 260);
@@ -197,6 +207,8 @@ namespace robot_defender
 
         private void IniciarOleada()
         {
+            
+
             dibujarTexto = true;
             temporizadorTexto = 0f;
             enemigos.Clear();
@@ -603,6 +615,9 @@ namespace robot_defender
             posicion.Y = 250;
             vidas = 5;
             estadoActual = EstadoJuego.Menu;
+
+            basededatos.CrearSessionResults(1,tiempoTranscurrido,ultimoatacante,enemigosDestruidos,basededatos.sesionActual);
+
             IniciarOleada();
             dibujarTexto = false;
         }
@@ -627,10 +642,12 @@ namespace robot_defender
         }
 
         private void ActualizarEnemigos(GameTime gameTime)
-        {
+        {   
+
+
             float centroBaseX = hitboxBase.X + hitboxBase.Width / 2f;
             float centroBaseY = hitboxBase.Y + hitboxBase.Height / 2f;
-            float tiempoTranscurrido = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+            tiempoTranscurrido = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
             for (int i = 0; i < enemigos.Count; i++)
             {
@@ -660,7 +677,8 @@ namespace robot_defender
                 if (distanciaBase > DistanciaAtaqueBase)
                 {
                     enemigo.atacando = false;
-                    float distanciaMovimiento = velocidadGlobal * 0.10f;
+                    //Si los enemigos son de arriba o abajo (los crabs) van mas despacio,los de los costados (los azules) son mas rapidos
+                    float distanciaMovimiento = (float)((enemigo.Spawn == PuntoSpawn.Arriba || enemigo.Spawn == PuntoSpawn.Abajo) ? velocidadGlobal * 0.10f : velocidadGlobal * 0.30);
                     if (distanciaMovimiento > distanciaBase - DistanciaAtaqueBase)
                         distanciaMovimiento = distanciaBase - DistanciaAtaqueBase;
 
@@ -727,7 +745,12 @@ namespace robot_defender
                     {
                         if (hitboxBala.Intersects(ObtenerHitbox(enemigos[j])))
                         {
+                            basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y), basededatos.sesionActual);
+                            basededatos.log++;
                             indiceEnemigo = j;
+                            enemigosDestruidos++;
+                            
+
                             break;
                         }
                     }
@@ -743,6 +766,10 @@ namespace robot_defender
                 else if (hitboxBala.Intersects(hitboxBase))
                 {
                     vidas--;
+                                                                                             //esto creo q esta mal,el I es de las balas pero bno :p
+                    basededatos.CrearCombatLogs(basededatos.log, "Disparo enemigo", new Vector2(enemigos[i].Posicion.X, enemigos[i].Posicion.Y),new Vector2(hitboxBase.X,hitboxBase.Y),basededatos.sesionActual);
+                    basededatos.log++;
+                    ultimoatacante = (bala.EsLateralEnemigo) ? "Laser de electro" : "Misil de un crab" ;
                     balas.RemoveAt(i);
                     balaSigueActiva = false;
                 }
