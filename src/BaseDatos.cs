@@ -1,58 +1,100 @@
-
+using System;
+using System.Data;
+using System.Numerics;
 using MySqlConnector;
 
 namespace robot_defender
 {
-
     public class ConexionBD
     {
         private string stringConexion = "Server=localhost;Port=3306;Database=robot_defender;User=root;Pwd=";
+        public int jugadorActual = 0;
+        public int sesionActual = 1;
+        public int log = 1;
 
-
-        public void RegistrarJugador(int idPlayer, string username, int highscore)
+        public void CrearPlayer(int id, int? oleadaMax)
         {
-            string query = "INSERT INTO players (id_player, username, highscore) VALUES (@id_player, @username, @highscore)";
-
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("CrearPlayer", conexion)) //ejecutamos el procedure de crear
                     {
-                        comando.Parameters.AddWithValue("@id_player", idPlayer);
-                        comando.Parameters.AddWithValue("@username", username);
-                        comando.Parameters.AddWithValue("@highscore", highscore);
-                        comando.ExecuteNonQuery(); //NonQuery porque no devuelve nada solo inserta y ya
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_oleadaMax", oleadaMax);
+                        comando.ExecuteNonQuery();
                     }
                 }
             }
             catch (MySqlException ex)
             {
-                if (ex.Number == 1062) //Si el id es duplicado
+                if (ex.Number == 1062)
                     System.Diagnostics.Debug.WriteLine("El jugador ya existe.");
                 else
                     System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
 
-
-        public void RegistrarSesion(int idSessions, int idPlayer, string dificultadInicial, int tiempoDefendido)
+        public DataTable ListarPlayer() //este es el de leer
         {
-            string query = "INSERT INTO Sessions (id_sessions, idPlayer, fecha_inicio, dificultad_inicial, tiempo_defendido) " +
-                           "VALUES (@id_sessions, @idPlayer, NOW(), @dificultad_inicial, @tiempo_defendido)";
-
+            DataTable tabla = new DataTable();
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("ListarPlayer", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_sessions", idSessions);
-                        comando.Parameters.AddWithValue("@idPlayer", idPlayer);
-                        comando.Parameters.AddWithValue("@dificultad_inicial", dificultadInicial);
-                        comando.Parameters.AddWithValue("@tiempo_defendido", tiempoDefendido);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+
+        public void ActualizarPlayer(int id, int oleadaMax) // procedure para editar
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarPlayer", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_oleadaMax", oleadaMax);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+
+        public void EliminarPlayer(int id) //procedure de eliminar
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarPlayer", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -64,24 +106,71 @@ namespace robot_defender
         }
 
 
-        public void RegistrarResultadosSesion(int idSessionResults, int idSessions, int integridadBaseFinal, int enemigosEliminados, int defensasDestruidas, string motivoFin)
+        public void CrearTablaClasificacion(int id, int playerFK, int sessionsFK) //Solo hace falta 1 pero cree el metodo para tener el crud completo
         {
-            string query = "INSERT INTO sessionResults (id_sessionResults, id_sessions, integridad_base_final, enemigos_eliminados, defensas_destruidas, motivo_fin) " +
-                           "VALUES (@id_sessionResults, @id_sessions, @integridad, @enemigos, @defensas, @motivo)";
-
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("CrearTablaClasificacion", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_sessionResults", idSessionResults);
-                        comando.Parameters.AddWithValue("@id_sessions", idSessions);
-                        comando.Parameters.AddWithValue("@integridad", integridadBaseFinal);
-                        comando.Parameters.AddWithValue("@enemigos", enemigosEliminados);
-                        comando.Parameters.AddWithValue("@defensas", defensasDestruidas);
-                        comando.Parameters.AddWithValue("@motivo", motivoFin);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_playerFK", playerFK);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("El registro ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+
+        public DataTable ListarTablaClasificacion() //procedure de leer toda la tabla de clasificacion
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarTablaClasificacion", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+
+
+        public void ActualizarTablaClasificacion(int id, int playerFK, int sessionsFK)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarTablaClasificacion", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_playerFK", playerFK);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -93,22 +182,95 @@ namespace robot_defender
         }
 
 
-        public void RegistrarSessionRecord(int idSessionRecord, int idSessionsFk, int idSessionResultsFk, int idCombatLogsFk)
-        {
-            string query = "INSERT INTO sessionRecord (id_sessionRecord, id_sessions_FK, `id_sessionResults(FK)`, id_combatLogsFK) " +
-                           "VALUES (@id_sessionRecord, @id_sessions_FK, @id_sessionResults_FK, @id_combatLogsFK)";
 
+        public void CrearSessions(int id, DateTime? fechaFin, int oleada, float tiempoDefendido)
+        {
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("CrearSessions", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_sessionRecord", idSessionRecord);
-                        comando.Parameters.AddWithValue("@id_sessions_FK", idSessionsFk);
-                        comando.Parameters.AddWithValue("@id_sessionResults_FK", idSessionResultsFk);
-                        comando.Parameters.AddWithValue("@id_combatLogsFK", idCombatLogsFk);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_fechaFin", fechaFin.HasValue ? (object)fechaFin.Value : DBNull.Value);
+                        comando.Parameters.AddWithValue("p_oleada", oleada);
+                        comando.Parameters.AddWithValue("p_tiempoDefendido", tiempoDefendido);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("La sesión ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+
+      public DataTable ListarSessions()
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarSessions", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+
+            
+        catch (MySqlException ex)
+{
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+        public void ActualizarSessions(int id, DateTime? fechaFin, int oleada, int tiempoDefendido, int catalogoEnemigosFK)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarSessions", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_fechaFin", fechaFin.HasValue ? (object)fechaFin.Value : DBNull.Value);
+                        comando.Parameters.AddWithValue("p_oleada", oleada);
+                        comando.Parameters.AddWithValue("p_tiempoDefendido", tiempoDefendido);
+                        comando.Parameters.AddWithValue("p_catalogoEnemigosFK", catalogoEnemigosFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public void EliminarSessions(int id)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarSessions", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -120,26 +282,310 @@ namespace robot_defender
         }
 
 
-        public void RegistrarLogCombate(int idCombatLogs, int idSessions, int idDestino, int idOrigen, int idImpacto, decimal valorImpacto, string tipoAccion, string coordenadas)
+        public void CrearCatalogoEnemigos(int id, int sessionsFK) // Solo hace falta 1 al iniciar
         {
-            string query = "INSERT INTO combatLogs (id_combatLogs, id_sessions, id_destino, id_origen, id_impacto, valor_impacto, timestamp, tipo_accion, coordenadas) " +
-                           "VALUES (@id_combatLogs, @id_sessions, @id_destino, @id_origen, @id_impacto, @valor_impacto, NOW(), @tipo_accion, @coordenadas)";
-
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("CrearCatalogoEnemigos", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_combatLogs", idCombatLogs);
-                        comando.Parameters.AddWithValue("@id_sessions", idSessions);
-                        comando.Parameters.AddWithValue("@id_destino", idDestino);
-                        comando.Parameters.AddWithValue("@id_origen", idOrigen);
-                        comando.Parameters.AddWithValue("@id_impacto", idImpacto);
-                        comando.Parameters.AddWithValue("@valor_impacto", valorImpacto);
-                        comando.Parameters.AddWithValue("@tipo_accion", tipoAccion);
-                        comando.Parameters.AddWithValue("@coordenadas", coordenadas);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("El registro ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+   
+
+ 
+        public void CrearEnemyType(int id, float velocidad, string nombre,int catalogoEnemigosFK) //Registra un tipo de enemigo
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("CrearEnemyType", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_velocidad", velocidad);
+                        comando.Parameters.AddWithValue("p_nombre", nombre);
+                        comando.Parameters.AddWithValue("p_catalogoEnemigosFK", catalogoEnemigosFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("El tipo de enemigo ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public DataTable ListarEnemyType() //muestra los tipos de enemigo
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarEnemyType", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+        public void ActualizarEnemyType(int id, float velocidad, string nombre, int catalogoEnemigosFK, int enemyInstanceFK)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarEnemyType", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_velocidad", velocidad);
+                        comando.Parameters.AddWithValue("p_nombre", nombre);
+                        comando.Parameters.AddWithValue("p_catalogoEnemigosFK", catalogoEnemigosFK);
+                        comando.Parameters.AddWithValue("p_enemyInstanceFK", enemyInstanceFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public void EliminarEnemyType(int id) //Quitar un tipo de enemigo
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarEnemyType", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+       
+        public void CrearEnemyInstance(int id, float velocidadDisparo, float x, float y, int enemyTypeFK) //registrar nueva instancia de enemigo
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("CrearEnemyInstance", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_velocidadDisparo", velocidadDisparo);
+                        comando.Parameters.AddWithValue("p_x", x);
+                        comando.Parameters.AddWithValue("p_y", y);
+                        comando.Parameters.AddWithValue("p_enemyTypeFK", enemyTypeFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("La instancia de enemigo ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public DataTable ListarEnemyInstance() //mostrar todas las instancias
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarEnemyInstance", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+        public void ActualizarEnemyInstance(int id, float velocidadDisparo, float x, float y, int enemyTypeFK) 
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarEnemyInstance", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_velocidadDisparo", velocidadDisparo);
+                        comando.Parameters.AddWithValue("p_x", x);
+                        comando.Parameters.AddWithValue("p_y", y);
+                        comando.Parameters.AddWithValue("p_enemyTypeFK", enemyTypeFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public void EliminarEnemyInstance(int id) //quita una instancia
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarEnemyInstance", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+      
+        public void CrearCombatLogs(int id, string tipoAccion, Microsoft.Xna.Framework.Vector2 origen, Microsoft.Xna.Framework.Vector2 destino, int sessionsFK) //registra una accion
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("CrearCombatLogs", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_tipoAccion", tipoAccion);
+                        comando.Parameters.AddWithValue("p_origen", origen);
+                        comando.Parameters.AddWithValue("p_destino", destino);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("El log ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public DataTable ListarCombatLogs() //mostrar todas las acciones
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarCombatLogs", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+        public void ActualizarCombatLogs(int id, string tipoAccion, string origen, string destino, int sessionsFK)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarCombatLogs", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_tipoAccion", tipoAccion);
+                        comando.Parameters.AddWithValue("p_origen", origen);
+                        comando.Parameters.AddWithValue("p_destino", destino);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public void EliminarCombatLogs(int id) //borra una accion
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarCombatLogs", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -150,23 +596,72 @@ namespace robot_defender
             }
         }
 
-
-        public void RegistrarCatalogoSesion(int idCatalogue, int idSessionsFk, int idDefensetypeFk, int idEnemyTypesFk)
+        public void CrearSessionResults(int id, float tiempoMuerte, string motivoFin, int enemigosDestruidos, int sessionsFK) //al terminar una partida crea los resultados
         {
-            string query = "INSERT INTO SessionCatalogue (id_catalogue, id_sessions_FK, id_defensetype_FK, id_enemyTypes_FK) " +
-                           "VALUES (@id_catalogue, @id_sessions_FK, @id_defensetype_FK, @id_enemyTypes_FK)";
-
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("CrearSessionResults", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_catalogue", idCatalogue);
-                        comando.Parameters.AddWithValue("@id_sessions_FK", idSessionsFk);
-                        comando.Parameters.AddWithValue("@id_defensetype_FK", idDefensetypeFk);
-                        comando.Parameters.AddWithValue("@id_enemyTypes_FK", idEnemyTypesFk);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_tiempoMuerte", tiempoMuerte);
+                        comando.Parameters.AddWithValue("p_motivoFin", motivoFin);
+                        comando.Parameters.AddWithValue("p_enemigosDestruidos", enemigosDestruidos);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                if (ex.Number == 1062)
+                    System.Diagnostics.Debug.WriteLine("El resultado ya existe.");
+                else
+                    System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+        public DataTable ListarSessionResults() //mostrar los resultados
+        {
+            DataTable tabla = new DataTable();
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ListarSessionResults", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        using (MySqlDataReader reader = comando.ExecuteReader())
+                        {
+                            tabla.Load(reader);
+                        }
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+            return tabla;
+        }
+        public void ActualizarSessionResults(int id, int tiempoMuerte, string motivoFin, int enemigosDestruidos, int sessionsFK)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("ActualizarSessionResults", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.Parameters.AddWithValue("p_tiempoMuerte", tiempoMuerte);
+                        comando.Parameters.AddWithValue("p_motivoFin", motivoFin);
+                        comando.Parameters.AddWithValue("p_enemigosDestruidos", enemigosDestruidos);
+                        comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -176,115 +671,17 @@ namespace robot_defender
                 System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
-
-
-        public void RegistrarTipoDefensa(int idDefensetype, string nombre, int rango, int vidaBase, int danoBase, int costoEnergia)
+        public void EliminarSessionResults(int id) //elimina los resultados de una sesion
         {
-            string query = "INSERT INTO defenseTypes (id_defensetype, nombre, rango, vida_base, daño_base, costo_energia) " +
-                           "VALUES (@id_defensetype, @nombre, @rango, @vida_base, @dano_base, @costo_energia)";
-
             try
             {
                 using (MySqlConnection conexion = new MySqlConnection(stringConexion))
                 {
                     conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
+                    using (MySqlCommand comando = new MySqlCommand("EliminarSessionResults", conexion))
                     {
-                        comando.Parameters.AddWithValue("@id_defensetype", idDefensetype);
-                        comando.Parameters.AddWithValue("@nombre", nombre);
-                        comando.Parameters.AddWithValue("@rango", rango);
-                        comando.Parameters.AddWithValue("@vida_base", vidaBase);
-                        comando.Parameters.AddWithValue("@dano_base", danoBase);
-                        comando.Parameters.AddWithValue("@costo_energia", costoEnergia);
-                        comando.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
-            }
-        }
-
-
-        public void RegistrarInstanciaDefensa(int idDefenseInstances, int idSessions, int idType, int vidaActual, string estadoOperativo, int x, int y)
-        {
-            string query = "INSERT INTO defenseInstances (id_defenseinstances, id_sessions, id_type, vida_actual, estado_operativo, x, y) " +
-                           "VALUES (@id_defenseinstances, @id_sessions, @id_type, @vida_actual, @estado_operativo, @x, @y)";
-
-            try
-            {
-                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
-                {
-                    conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
-                    {
-                        comando.Parameters.AddWithValue("@id_defenseinstances", idDefenseInstances);
-                        comando.Parameters.AddWithValue("@id_sessions", idSessions);
-                        comando.Parameters.AddWithValue("@id_type", idType);
-                        comando.Parameters.AddWithValue("@vida_actual", vidaActual);
-                        comando.Parameters.AddWithValue("@estado_operativo", estadoOperativo);
-                        comando.Parameters.AddWithValue("@x", x);
-                        comando.Parameters.AddWithValue("@y", y);
-                        comando.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
-            }
-        }
-
-
-        public void RegistrarTipoEnemigo(int idEnemyType, string nombre, int vidaBase, int danoAtaque, float velocidad, int resistencia)
-        {
-            string query = "INSERT INTO enemyTypes (id_enemyType, nombre, vida_base, daño_ataque, velocidad, resistencia) " +
-                           "VALUES (@id_enemyType, @nombre, @vida_base, @dano_ataque, @velocidad, @resistencia)";
-
-            try
-            {
-                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
-                {
-                    conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
-                    {
-                        comando.Parameters.AddWithValue("@id_enemyType", idEnemyType);
-                        comando.Parameters.AddWithValue("@nombre", nombre);
-                        comando.Parameters.AddWithValue("@vida_base", vidaBase);
-                        comando.Parameters.AddWithValue("@dano_ataque", danoAtaque);
-                        comando.Parameters.AddWithValue("@velocidad", velocidad);
-                        comando.Parameters.AddWithValue("@resistencia", resistencia);
-                        comando.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
-            }
-        }
-
-
-        public void RegistrarInstanciaEnemigo(int idEnemyInstances, int idTypeenemy, int idSessions, int vidaActual, int oleadaOriginal, int x, int y)
-        {
-            string query = "INSERT INTO enemyInstances (id_enemyInstances, id_typeenemy, id_sessions, vida_actual, `oleada original`, x, y) " +
-                           "VALUES (@id_enemyInstances, @id_typeenemy, @id_sessions, @vida_actual, @oleada_original, @x, @y)";
-
-            try
-            {
-                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
-                {
-                    conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand(query, conexion))
-                    {
-                        comando.Parameters.AddWithValue("@id_enemyInstances", idEnemyInstances);
-                        comando.Parameters.AddWithValue("@id_typeenemy", idTypeenemy);
-                        comando.Parameters.AddWithValue("@id_sessions", idSessions);
-                        comando.Parameters.AddWithValue("@vida_actual", vidaActual);
-                        comando.Parameters.AddWithValue("@oleada_original", oleadaOriginal);
-                        comando.Parameters.AddWithValue("@x", x);
-                        comando.Parameters.AddWithValue("@y", y);
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
                         comando.ExecuteNonQuery();
                     }
                 }
