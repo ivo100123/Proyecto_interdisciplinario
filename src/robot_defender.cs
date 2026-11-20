@@ -217,31 +217,31 @@ namespace robot_defender
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            menuBackground = Content.Load<Texture2D>("assets/menuBackground");
-            botonStartTexture = Content.Load<Texture2D>("assets/botonStart (1)");
-            botonOpcionesTexture = Content.Load<Texture2D>("assets/botonOpciones");
-            botonVolverTexture = Content.Load<Texture2D>("assets/botonVolver");
-            botonMusicaTexture = Content.Load<Texture2D>("assets/botonMusica");
+            menuBackground = Content.Load<Texture2D>("menuBackground");
+            botonStartTexture = Content.Load<Texture2D>("botonStart (1)");
+            botonOpcionesTexture = Content.Load<Texture2D>("botonOpciones");
+            botonVolverTexture = Content.Load<Texture2D>("botonVolver");
+            botonMusicaTexture = Content.Load<Texture2D>("botonMusica");
 
-            pauseBoxTexture = Content.Load<Texture2D>("assets/pauseBox");
-            botonReanudarTexture = Content.Load<Texture2D>("assets/botonReanudar");
-            botonSalirMenuTexture = Content.Load<Texture2D>("assets/botonSalir");
-            Gummy = Content.Load<Texture2D>("assets/Gum Bot sprites");
-            moon = Content.Load<Texture2D>("assets/FONDO");
-            Base = Content.Load<Texture2D>("assets/Catbase");
-            corazonTexture = Content.Load<Texture2D>("assets/corazones");
+            pauseBoxTexture = Content.Load<Texture2D>("pauseBox");
+            botonReanudarTexture = Content.Load<Texture2D>("botonReanudar");
+            botonSalirMenuTexture = Content.Load<Texture2D>("botonSalir");
+            Gummy = Content.Load<Texture2D>("Gum Bot sprites");
+            moon = Content.Load<Texture2D>("FONDO");
+            Base = Content.Load<Texture2D>("Catbase");
+            corazonTexture = Content.Load<Texture2D>("corazones");
 
-            enemigoAzul = Content.Load<Texture2D>("assets/enemigoAzul");
-            crab = Content.Load<Texture2D>("assets/crab");
-            laserRojo = Content.Load<Texture2D>("assets/laserRojo");
-            misil = Content.Load<Texture2D>("assets/misiles");
-            laserAzul = Content.Load<Texture2D>("assets/laserAzul");
+            enemigoAzul = Content.Load<Texture2D>("enemigoAzul");
+            crab = Content.Load<Texture2D>("crab");
+            laserRojo = Content.Load<Texture2D>("laserRojo");
+            misil = Content.Load<Texture2D>("misiles");
+            laserAzul = Content.Load<Texture2D>("laserAzul");
 
-            fuenteTexto = Content.Load<SpriteFont>("assets/Minecraft");
+            fuenteTexto = Content.Load<SpriteFont>("Minecraft");
 
-            menuSong = Content.Load<Song>("assets/MenuBG");
-            gameSong = Content.Load<Song>("assets/BG");
-            Laser1 = Content.Load<SoundEffect>("assets/BubblePop");
+            menuSong = Content.Load<Song>("MenuBG");
+            gameSong = Content.Load<Song>("BG");
+            Laser1 = Content.Load<SoundEffect>("BubblePop");
 
             _pixel = new Texture2D(GraphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
@@ -482,7 +482,8 @@ namespace robot_defender
                     _spriteBatch.Draw(
                         corazonTexture,
                         destinationRectangle: new Rectangle((int)posicionCorazon.X, (int)posicionCorazon.Y, corazonAncho, corazonAlto),
-                        sourceRectangle: null,
+                        sourceRectangle: new Rectangle(131,158,corazonAncho / 2,corazonAlto - 5),
+                        //                       offsetX,offsetY,/2 pq aparecian 2, - 5 pq quedaba muy alto
                         color: colorCorazon
                     );
                 }
