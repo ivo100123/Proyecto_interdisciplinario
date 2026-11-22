@@ -1,0 +1,82 @@
+create database robot_defender;
+use robot_defender;
+
+create table Player
+(
+    id int AUTO_INCREMENT,
+    oleadaMax int null,
+    tiempoMaximo float null,
+    primary key(id)
+);
+
+create table Sessions
+(
+    id int AUTO_INCREMENT,
+    fechaFin date null,
+    oleada int not null,
+    tiempoDefendido float not null,
+    primary key(id)
+);
+
+create table TablaClasificacion
+(
+    id int AUTO_INCREMENT,
+    PlayerFK int not null,
+    SessionsFK int not null,
+    
+    primary key(id),
+    foreign key(PlayerFK) references Player(id),
+    foreign key(SessionsFK) references Sessions(id)
+);
+
+create table catalogoEnemigos
+(
+    id int AUTO_INCREMENT,
+    SessionsFK int not null,
+    primary key(id),
+    foreign key(SessionsFK) references Sessions(id) 
+);
+
+create table EnemyType
+(
+    id int AUTO_INCREMENT,
+    velocidad float not null,
+    nombre varchar(20) not null,
+    catalogoEnemigosFK int not null,
+    primary key(id),
+    foreign key(catalogoEnemigosFK) references catalogoEnemigos(id) 
+);
+
+create table EnemyInstance
+(
+    id int AUTO_INCREMENT,
+    velocidadDisparo float not null,
+    x float not null,
+    y float not null,
+    EnemyTypeFK int not null,
+    primary key(id),
+    foreign key(EnemyTypeFK) references EnemyType(id) 
+);
+
+create table CombatLogs
+(
+    id int AUTO_INCREMENT,
+    tipoAccion varchar(50) not null,
+    origen varchar(50) not null,
+    destino varchar(50) not null,
+    stamptime float not null,
+    SessionsFK int not null,
+    primary key(id),
+    foreign key(SessionsFK) references Sessions(id) 
+);
+
+create table SessionResults
+(
+    id int AUTO_INCREMENT,
+    tiempoMuerte float not null,
+    motivoFin varchar(50) not null,
+    enemigosDestruidos int not null,
+	SessionsFK int not null,
+    primary key(id),
+    foreign key(SessionsFK) references Sessions(id) 
+);
