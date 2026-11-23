@@ -117,12 +117,14 @@ namespace robot_defender
         private Texture2D botonSalirMenuTexture;
         private Rectangle botonSalirMenuRect;
 
-        private ConexionBD basededatos = new ConexionBD();
+       private ConexionBD basededatos = new ConexionBD();
 
         private float temporizador = 0f;
         private float temporizadorDisparos = 0f;
         private bool cooldown = false;
         private float temporizadorCooldown = 0f;
+        private const float DuracionCooldown = 1000f;
+        private bool espacioContado = false;
 
         private int vidas = 5;
         private int disparosCooldown = 0;
@@ -175,13 +177,13 @@ namespace robot_defender
             basededatos.CrearEnemyType(1, velocidadGlobal * 0.10f, "crab", 1);
             basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro", 1);
             basededatos.CrearSessionResults(basededatos.sesionActual, 0f, "Partida en curso", 0, basededatos.sesionActual);
-
+           
 
 
 
 
             hitboxAlien = new Rectangle((int)posicion.X, (int)posicion.Y, 32 * 2, 32 * 2);
-            hitboxMapa = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, 260);
+            hitboxMapa = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, 450);
             hitboxBase = new Rectangle((GraphicsDevice.Viewport.Width / 2) - 50, (GraphicsDevice.Viewport.Height / 2) - 45, 100, 250);
             IniciarOleada();
 
@@ -225,7 +227,7 @@ namespace robot_defender
             temporizadorTexto = 0f;
 
             //antes de empezar se limpia la BD por si quedan enemigos vivos al morirse
-            foreach (Enemigo enemigo in enemigos)
+           foreach (Enemigo enemigo in enemigos)
                 basededatos.EliminarEnemyInstance(enemigo.IdBD);
 
             enemigos.Clear();
@@ -242,7 +244,8 @@ namespace robot_defender
                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
                 else
                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
-            }
+            
+                }
 
             for (int i = 0; i < ReservasPorOleada; i++)
                 puntosSpawnPendientes.Add(puntosSpawn[i % puntosSpawn.Length]);
@@ -304,7 +307,7 @@ namespace robot_defender
             if (estadoActual == EstadoJuego.Menu)
             {
                 dibujarTexto = false;
-                if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
+               if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
                     MediaPlayer.Play(menuSong);
@@ -378,7 +381,7 @@ namespace robot_defender
                         {
                             temporizadorDisparos += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
-                            if (temporizadorDisparos >= 5000)
+                            if (temporizadorDisparos >= 2000)
                             {
                                 disparosCooldown = 0;
                                 temporizadorDisparos = 0f;
@@ -412,7 +415,7 @@ namespace robot_defender
                         if (cooldown)
                         {
                             temporizadorCooldown += (float)gameTime.ElapsedGameTime.TotalMilliseconds;
-                            if (temporizadorCooldown >= 500)
+                            if (temporizadorCooldown >= DuracionCooldown)
                             {
                                 cooldown = false;
                                 temporizadorCooldown = 0f;
@@ -420,6 +423,9 @@ namespace robot_defender
                                 disparosCooldown = 0;
                             }
                         }
+
+                        if (cooldown == false && disparosCooldown == 0 && Keyboard.GetState().IsKeyUp(Keys.Space))
+                            espacioContado = false;
                     }
                 }
             }
@@ -470,8 +476,26 @@ namespace robot_defender
                     color: Color.White
                 );
 
+                int anchoBarraCooldown = 96;
+                int altoBarraCooldown = 8;
+                int xBarraCooldown = (int)posicion.X;
+                int yBarraCooldown = (int)posicion.Y - altoBarraCooldown - 6;
+                float progresoBarraCooldown = cooldown
+                    ? 1f - temporizadorCooldown / DuracionCooldown
+                    : disparosCooldown / 6f;
+                progresoBarraCooldown = Math.Clamp(progresoBarraCooldown, 0f, 1f);
+                if (progresoBarraCooldown > 0f)
+                {
+                    int nivelBarra = (int)Math.Ceiling(progresoBarraCooldown * 6f);
+                    int ySourceBarra = 33 + (nivelBarra - 1) * 17;
+                    Rectangle sourceRectBarra = new Rectangle(12, ySourceBarra, 102, 12);
+                    Rectangle destinoBarra = new Rectangle(xBarraCooldown, yBarraCooldown, anchoBarraCooldown, altoBarraCooldown);
+
+                    _spriteBatch.Draw(corazonTexture, destinoBarra, sourceRectBarra, Color.White);
+                }
+
                 _spriteBatch.Draw(_pixel, hitboxAlien, Color.Red * 0.4f);
-                _spriteBatch.Draw(_pixel, hitboxMapa, Color.Yellow * 0.7f);
+                _spriteBatch.Draw(_pixel, hitboxMapa, Color.Yellow * 0.2f);
 
                 foreach (Enemigo enemigo in enemigos)
                 {
@@ -479,31 +503,45 @@ namespace robot_defender
 
                     if (enemigo.Spawn == PuntoSpawn.Izquierda || enemigo.Spawn == PuntoSpawn.Derecha)
                     {
-                        int ancho = enemigoAzul.Width / 17;
                         int alto = enemigoAzul.Height / 7;
+                        if (enemigo.atacando)
+                        {
+                            sourceRectEnemigo = new Rectangle(0, alto, 30, alto);
+                        }
+                        else
+                        {
+                            int inicioFrameX = 12;
+                            int separacionFrames = 31;
+                            int anchoFrame = 26;
+                            int indice = enemigo.IndiceAnimacion % 9;
 
-                        int indice = enemigo.IndiceAnimacion % 9;
+                            sourceRectEnemigo = new Rectangle(inicioFrameX + indice * separacionFrames, 2 * alto, anchoFrame, alto);
+                        }
 
-                        sourceRectEnemigo = new Rectangle(indice * ancho - 10, 1 * alto, ancho - 20, alto);
-
-                        _spriteBatch.Draw(enemigoAzul, ObtenerHitbox(enemigo), sourceRectEnemigo, Color.White);
+                        if (enemigo.Spawn == PuntoSpawn.Derecha) _spriteBatch.Draw(enemigoAzul, ObtenerHitbox(enemigo), sourceRectEnemigo, Color.White);
+                        else _spriteBatch.Draw(enemigoAzul, ObtenerHitbox(enemigo), sourceRectEnemigo, Color.White, 0f, Vector2.Zero, SpriteEffects.FlipHorizontally, 0f);
                     }
                     else
                     {
                         int ancho = crab.Width / 12;
                         int alto = crab.Height / 11;
+                        int anchoFrame = ancho - 20;
 
                         if (enemigo.atacando == true)
                         {
-                            sourceRectEnemigo = new Rectangle(20, 10 * alto, ancho - 10, alto - 15);
+                            sourceRectEnemigo = new Rectangle(22, 10 * alto, anchoFrame, alto);
                         }
                         else
                         {
                             int frameIndex = enemigo.IndiceAnimacion % 4;
-                            sourceRectEnemigo = new Rectangle(frameIndex * ancho - 10, 4 * alto, ancho - 10, alto - 15);
+                            int inicioFrameX = 12 + frameIndex * 50;
+
+                            sourceRectEnemigo = new Rectangle(inicioFrameX, 4 * alto, anchoFrame, alto);
                         }
 
-                        _spriteBatch.Draw(crab, ObtenerHitbox(enemigo), sourceRectEnemigo, Color.White);
+                        Rectangle destinoCrab = ObtenerHitbox(enemigo);
+                        destinoCrab.X -= 8;
+                        _spriteBatch.Draw(crab, destinoCrab, sourceRectEnemigo, Color.White);
                     }
                 }
 
@@ -645,8 +683,8 @@ namespace robot_defender
                 return;
 
             // Estos procedimientos eliminan primero los registros dependientes.
-            basededatos.EliminarSessions(basededatos.sesionActual);
-            basededatos.EliminarPlayer(basededatos.jugadorActual);
+             basededatos.EliminarSessions(basededatos.sesionActual);
+             basededatos.EliminarPlayer(basededatos.jugadorActual);
 
             limpiezaBaseDatosEjecutada = true;
         }
@@ -657,7 +695,7 @@ namespace robot_defender
             basededatos.ActualizarSessionResults(basededatos.sesionActual, (int)tiempoGlobal, ultimoatacante, enemigosDestruidos, basededatos.sesionActual);
             basededatos.ActualizarPlayer(basededatos.jugadorActual, OleadaActual, (int)tiempoGlobal);
             basededatos.ActualizarTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
-
+           
             posicion.X = 350;
             posicion.Y = 250;
             vidas = 5;
@@ -794,8 +832,8 @@ namespace robot_defender
                     {
                         if (hitboxBala.Intersects(ObtenerHitbox(enemigos[j])))
                         {
-                            basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y),tiempoGlobal, basededatos.sesionActual);
-                            basededatos.log++;
+                             basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y),tiempoGlobal, basededatos.sesionActual);
+                             basededatos.log++;
                             indiceEnemigo = j;
                             enemigosDestruidos++;
 
@@ -853,11 +891,14 @@ namespace robot_defender
                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
                 else
                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
-            }
+            
+                }
         }
 
         private void dispararJugador()
         {
+            bool espacioPresionado = Keyboard.GetState().IsKeyDown(Keys.Space);
+
             bool yaHayBalaJugador = false;
 
             for (int i = 0; i < balas.Count; i++)
@@ -867,7 +908,7 @@ namespace robot_defender
             }
 
             if (yaHayBalaJugador == false &&
-                Keyboard.GetState().IsKeyDown(Keys.Space) && direccion != -1 && cooldown == false)
+                espacioPresionado && direccion != -1 && cooldown == false)
             {
                 Vector2 direccionBala = new Vector2(0, 0);
 
@@ -886,13 +927,18 @@ namespace robot_defender
 
                 balas.Add(new Bala(posicionBala, direccionBala, true));
                 Laser1.Play();
+            }
+
+            if (espacioPresionado && espacioContado == false && direccion != -1 && cooldown == false)
+            {
+                espacioContado = true;
 
                 if (disparosCooldown == 0)
                     temporizadorDisparos = 0f;
 
                 disparosCooldown++;
 
-                if (disparosCooldown >= 6)
+                if (disparosCooldown >= 5)
                 {
                     cooldown = true;
                     temporizadorCooldown = 0f;
@@ -900,6 +946,9 @@ namespace robot_defender
                     temporizadorDisparos = 0f;
                 }
             }
+
+            if (espacioPresionado == false)
+                espacioContado = false;
         }
     }
 }
