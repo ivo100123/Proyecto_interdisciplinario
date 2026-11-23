@@ -8,11 +8,11 @@ namespace robot_defender
     public class ConexionBD
     {
         private string stringConexion = "Server=localhost;Port=3306;Database=robot_defender;User=root;Pwd=";
-        public int jugadorActual = 0;
+        public int jugadorActual = 1;
         public int sesionActual = 1;
         public int log = 1;
 
-        public void CrearPlayer(int id, int? oleadaMax)
+        public void CrearPlayer(int id, int? oleadaMax, int? tiempoMaximo)
         {
             try
             {
@@ -24,6 +24,7 @@ namespace robot_defender
                         comando.CommandType = CommandType.StoredProcedure;
                         comando.Parameters.AddWithValue("p_id", id);
                         comando.Parameters.AddWithValue("p_oleadaMax", oleadaMax);
+                        comando.Parameters.AddWithValue("p_tiempoDefendido", tiempoMaximo);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -62,7 +63,7 @@ namespace robot_defender
             return tabla;
         }
 
-        public void ActualizarPlayer(int id, int oleadaMax) // procedure para editar
+        public void ActualizarPlayer(int id, int oleadaMax, int tiempoDefendido) // procedure para editar
         {
             try
             {
@@ -74,6 +75,7 @@ namespace robot_defender
                         comando.CommandType = CommandType.StoredProcedure;
                         comando.Parameters.AddWithValue("p_id", id);
                         comando.Parameters.AddWithValue("p_oleadaMax", oleadaMax);
+                        comando.Parameters.AddWithValue("p_tiempoDefendido", tiempoDefendido);
                         comando.ExecuteNonQuery();
                     }
                 }
@@ -210,7 +212,7 @@ namespace robot_defender
             }
         }
 
-      public DataTable ListarSessions()
+        public DataTable ListarSessions()
         {
             DataTable tabla = new DataTable();
             try
@@ -229,9 +231,9 @@ namespace robot_defender
                 }
             }
 
-            
-        catch (MySqlException ex)
-{
+
+            catch (MySqlException ex)
+            {
                 System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
             return tabla;
@@ -306,10 +308,10 @@ namespace robot_defender
                     System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
-   
 
- 
-        public void CrearEnemyType(int id, float velocidad, string nombre,int catalogoEnemigosFK) //Registra un tipo de enemigo
+
+
+        public void CrearEnemyType(int id, float velocidad, string nombre, int catalogoEnemigosFK) //Registra un tipo de enemigo
         {
             try
             {
@@ -359,30 +361,7 @@ namespace robot_defender
             }
             return tabla;
         }
-        public void ActualizarEnemyType(int id, float velocidad, string nombre, int catalogoEnemigosFK, int enemyInstanceFK)
-        {
-            try
-            {
-                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
-                {
-                    conexion.Open();
-                    using (MySqlCommand comando = new MySqlCommand("ActualizarEnemyType", conexion))
-                    {
-                        comando.CommandType = CommandType.StoredProcedure;
-                        comando.Parameters.AddWithValue("p_id", id);
-                        comando.Parameters.AddWithValue("p_velocidad", velocidad);
-                        comando.Parameters.AddWithValue("p_nombre", nombre);
-                        comando.Parameters.AddWithValue("p_catalogoEnemigosFK", catalogoEnemigosFK);
-                        comando.Parameters.AddWithValue("p_enemyInstanceFK", enemyInstanceFK);
-                        comando.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (MySqlException ex)
-            {
-                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
-            }
-        }
+
         public void EliminarEnemyType(int id) //Quitar un tipo de enemigo
         {
             try
@@ -403,7 +382,7 @@ namespace robot_defender
                 System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
-       
+
         public void CrearEnemyInstance(int id, float velocidadDisparo, float x, float y, int enemyTypeFK) //registrar nueva instancia de enemigo
         {
             try
@@ -455,7 +434,7 @@ namespace robot_defender
             }
             return tabla;
         }
-        public void ActualizarEnemyInstance(int id, float velocidadDisparo, float x, float y, int enemyTypeFK) 
+        public void ActualizarEnemyInstance(int id, float velocidadDisparo, float x, float y, int enemyTypeFK)
         {
             try
             {
@@ -499,8 +478,8 @@ namespace robot_defender
                 System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
-      
-        public void CrearCombatLogs(int id, string tipoAccion, Microsoft.Xna.Framework.Vector2 origen, Microsoft.Xna.Framework.Vector2 destino, int sessionsFK) //registra una accion
+
+        public void CrearCombatLogs(int id, string tipoAccion, Microsoft.Xna.Framework.Vector2 origen, Microsoft.Xna.Framework.Vector2 destino, float stamptime, int sessionsFK) //registra una accion
         {
             try
             {
@@ -512,8 +491,9 @@ namespace robot_defender
                         comando.CommandType = CommandType.StoredProcedure;
                         comando.Parameters.AddWithValue("p_id", id);
                         comando.Parameters.AddWithValue("p_tipoAccion", tipoAccion);
-                        comando.Parameters.AddWithValue("p_origen", origen);
-                        comando.Parameters.AddWithValue("p_destino", destino);
+                        comando.Parameters.AddWithValue("p_origen", origen.ToString());
+                        comando.Parameters.AddWithValue("p_destino", destino.ToString());
+                        comando.Parameters.AddWithValue("p_stamptime", stamptime);
                         comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
                         comando.ExecuteNonQuery();
                     }
@@ -551,7 +531,7 @@ namespace robot_defender
             }
             return tabla;
         }
-        public void ActualizarCombatLogs(int id, string tipoAccion, string origen, string destino, int sessionsFK)
+        public void ActualizarCombatLogs(int id, string tipoAccion, string origen, string destino, float stamptime, int sessionsFK)
         {
             try
             {
@@ -565,6 +545,7 @@ namespace robot_defender
                         comando.Parameters.AddWithValue("p_tipoAccion", tipoAccion);
                         comando.Parameters.AddWithValue("p_origen", origen);
                         comando.Parameters.AddWithValue("p_destino", destino);
+                        comando.Parameters.AddWithValue("p_stamptime", stamptime);
                         comando.Parameters.AddWithValue("p_sessionsFK", sessionsFK);
                         comando.ExecuteNonQuery();
                     }
@@ -691,5 +672,49 @@ namespace robot_defender
                 System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
             }
         }
+
+
+        public void EliminarCatalogoEnemigos(int id)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarCatalogoEnemigos", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+
+        public void EliminarTablaClasificacion(int id)
+        {
+            try
+            {
+                using (MySqlConnection conexion = new MySqlConnection(stringConexion))
+                {
+                    conexion.Open();
+                    using (MySqlCommand comando = new MySqlCommand("EliminarTablaClasificacion", conexion))
+                    {
+                        comando.CommandType = CommandType.StoredProcedure;
+                        comando.Parameters.AddWithValue("p_id", id);
+                        comando.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (MySqlException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MYSQL ERROR: " + ex.Message);
+            }
+        }
+
     }
 }
