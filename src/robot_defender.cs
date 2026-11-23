@@ -130,7 +130,7 @@ namespace robot_defender
         private int disparosCooldown = 0;
         private int direccion = -1;
         private int actualizacionTiempo = 120;
-        private const int totalFrames = 4;
+        private const int totalFrames = 9;
         private Rectangle[] rectangulo = new Rectangle[totalFrames];
         private int indiceActualAnimacion = 0;
 
@@ -170,14 +170,14 @@ namespace robot_defender
         {
             base.Initialize();
 
-            basededatos.CrearPlayer(basededatos.jugadorActual, null, null);
-            basededatos.CrearSessions(basededatos.sesionActual, null, 1, 0);
-            basededatos.CrearTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
-            basededatos.CrearCatalogoEnemigos(1, basededatos.sesionActual);
-            basededatos.CrearEnemyType(1, velocidadGlobal * 0.10f, "crab", 1);
-            basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro", 1);
+             basededatos.CrearPlayer(basededatos.jugadorActual, null, null);
+             basededatos.CrearSessions(basededatos.sesionActual, null, 1, 0);
+             basededatos.CrearTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
+             basededatos.CrearCatalogoEnemigos(1, basededatos.sesionActual);
+             basededatos.CrearEnemyType(1, velocidadGlobal * 0.10f, "crab", 1);
+             basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro", 1);
             basededatos.CrearSessionResults(basededatos.sesionActual, 0f, "Partida en curso", 0, basededatos.sesionActual);
-           
+
 
 
 
@@ -199,12 +199,11 @@ namespace robot_defender
             rectanguloMisil = new Rectangle(160, 89, 23, 13);
             int frameWidth = 32;
             int frameHeight = 32;
-            int offsetX = 32;
-            int offsetY = 32;
-
             for (int i = 0; i < totalFrames; i++)
             {
-                rectangulo[i] = new Rectangle(offsetX + (i * frameWidth), offsetY, frameWidth, frameHeight);
+                int columna = i < 6 ? i : i - 6;
+                int fila = i < 6 ? 1 : 2;
+                rectangulo[i] = new Rectangle(32 + (columna * frameWidth), fila * frameHeight, frameWidth, frameHeight);
             }
         }
 
@@ -240,11 +239,11 @@ namespace robot_defender
                 Enemigo nuevoEnemigo = new Enemigo(ObtenerPosicionSpawn(spawn), spawn, siguienteIdEnemigo++);
                 enemigos.Add(nuevoEnemigo);
 
-                if (nuevoEnemigo.Spawn == PuntoSpawn.Abajo || nuevoEnemigo.Spawn == PuntoSpawn.Arriba)
-                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
+               if (nuevoEnemigo.Spawn == PuntoSpawn.Abajo || nuevoEnemigo.Spawn == PuntoSpawn.Arriba)
+                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
                 else
-                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
-            
+                     basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
+
                 }
 
             for (int i = 0; i < ReservasPorOleada; i++)
@@ -284,8 +283,8 @@ namespace robot_defender
             _pixel = new Texture2D(GraphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-            MediaPlayer.Play(menuSong);
-           MediaPlayer.IsRepeating = true;
+           MediaPlayer.Play(menuSong);
+          MediaPlayer.IsRepeating = true;
         }
 
         protected override void Update(GameTime gameTime)
@@ -330,7 +329,7 @@ namespace robot_defender
                 dibujarTexto = false;
                 if (cursorRect.Intersects(botonMusicaRect) && mouseClicked)
                 {
-                   musicaActiva = !musicaActiva;
+                  musicaActiva = !musicaActiva;
                     if (musicaActiva)
                         MediaPlayer.Resume();
                     else
@@ -468,13 +467,6 @@ namespace robot_defender
 
                 int safeIndex = Math.Clamp(indiceActualAnimacion, 0, totalFrames - 1);
                 Rectangle sourceRectangle = rectangulo[safeIndex];
-
-                _spriteBatch.Draw(
-                    Gummy,
-                    destinationRectangle: new Rectangle((int)posicion.X, (int)posicion.Y, 32 * 3, 32 * 3),
-                    sourceRectangle: sourceRectangle,
-                    color: Color.White
-                );
 
                 int anchoBarraCooldown = 96;
                 int altoBarraCooldown = 8;
@@ -635,6 +627,13 @@ namespace robot_defender
                         0f);
                 }
 
+                _spriteBatch.Draw(
+                    Gummy,
+                    destinationRectangle: new Rectangle((int)posicion.X, (int)posicion.Y, 32 * 3, 32 * 3),
+                    sourceRectangle: sourceRectangle,
+                    color: Color.White
+                );
+
                 if (estadoActual == EstadoJuego.Pausa)
                 {
                     _spriteBatch.Draw(pauseBoxTexture, pauseBoxRect, Color.White);
@@ -683,18 +682,18 @@ namespace robot_defender
                 return;
 
             // Estos procedimientos eliminan primero los registros dependientes.
-             basededatos.EliminarSessions(basededatos.sesionActual);
-             basededatos.EliminarPlayer(basededatos.jugadorActual);
+              basededatos.EliminarSessions(basededatos.sesionActual);
+              basededatos.EliminarPlayer(basededatos.jugadorActual);
 
             limpiezaBaseDatosEjecutada = true;
         }
 
         private void muere()
         {
-            basededatos.ActualizarSessions(basededatos.sesionActual, DateTime.Now, OleadaActual, (int)tiempoGlobal, 1);
-            basededatos.ActualizarSessionResults(basededatos.sesionActual, (int)tiempoGlobal, ultimoatacante, enemigosDestruidos, basededatos.sesionActual);
-            basededatos.ActualizarPlayer(basededatos.jugadorActual, OleadaActual, (int)tiempoGlobal);
-            basededatos.ActualizarTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
+             basededatos.ActualizarSessions(basededatos.sesionActual, DateTime.Now, OleadaActual, (int)tiempoGlobal, 1);
+             basededatos.ActualizarSessionResults(basededatos.sesionActual, (int)tiempoGlobal, ultimoatacante, enemigosDestruidos, basededatos.sesionActual);
+             basededatos.ActualizarPlayer(basededatos.jugadorActual, OleadaActual, (int)tiempoGlobal);
+             basededatos.ActualizarTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
            
             posicion.X = 350;
             posicion.Y = 250;
@@ -810,8 +809,8 @@ namespace robot_defender
                 origen.X - TamañoBalaEnemigo / 2f,
                 origen.Y - TamañoBalaEnemigo / 2f);
 
-            basededatos.CrearCombatLogs(basededatos.log, "Disparo enemigo", origen, new Vector2(destinoX, destinoY),tiempoGlobal, basededatos.sesionActual);
-            basededatos.log++;
+             basededatos.CrearCombatLogs(basededatos.log, "Disparo enemigo", origen, new Vector2(destinoX, destinoY),tiempoGlobal, basededatos.sesionActual);
+             basededatos.log++;
 
             balas.Add(new Bala(posicionBala, new Vector2(direccionX, direccionY), false, esLateral, origen));
         }
@@ -832,8 +831,8 @@ namespace robot_defender
                     {
                         if (hitboxBala.Intersects(ObtenerHitbox(enemigos[j])))
                         {
-                             basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y),tiempoGlobal, basededatos.sesionActual);
-                             basededatos.log++;
+                              basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y),tiempoGlobal, basededatos.sesionActual);
+                              basededatos.log++;
                             indiceEnemigo = j;
                             enemigosDestruidos++;
 
