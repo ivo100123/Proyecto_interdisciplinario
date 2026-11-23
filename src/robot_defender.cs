@@ -37,14 +37,16 @@ namespace robot_defender
         {
             public Vector2 Posicion;
             public PuntoSpawn Spawn;
+            public int IdBD;
             public float TemporizadorDisparo;
             public int IndiceAnimacion;
             public bool atacando;
 
-            public Enemigo(Vector2 posicion, PuntoSpawn spawn)
+            public Enemigo(Vector2 posicion, PuntoSpawn spawn, int idBD)
             {
                 Posicion = posicion;
                 Spawn = spawn;
+                IdBD = idBD;
                 TemporizadorDisparo = 0f;
                 IndiceAnimacion = 0;
                 atacando = false;
@@ -59,14 +61,14 @@ namespace robot_defender
             public bool EsLateralEnemigo;
             public Vector2 OrigenEnemigo;
 
-            public Bala(Vector2 posicion, Vector2 direccion, bool esJugador, bool esLateralEnemigo = false)
+            public Bala(Vector2 posicion, Vector2 direccion, bool esJugador, bool esLateralEnemigo = false, Vector2 origenEnemigo = default)
             {
                 Posicion = posicion;
                 Direccion = direccion;
                 EsJugador = esJugador;
                 EsLateralEnemigo = esLateralEnemigo;
-                
-        }
+                OrigenEnemigo = origenEnemigo;
+            }
         }
 
         private const int TamañoEnemigo = 40;
@@ -131,6 +133,11 @@ namespace robot_defender
         private int indiceActualAnimacion = 0;
 
         private float velocidadGlobal = 5.0f;
+
+        private float tiempoGlobal = 0f;
+        private int siguienteIdEnemigo = 0;
+        private bool limpiezaBaseDatosEjecutada = false;
+
         private Vector2 posicion = new Vector2(350, 250);
 
         private Texture2D _pixel;
@@ -152,19 +159,24 @@ namespace robot_defender
             _graphics.PreferredBackBufferHeight = 600;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
+
+            // También limpia la base de datos si se cierra la ventana con la X.
+            Exiting += (sender, args) => LimpiarBaseDatos();
         }
 
         protected override void Initialize()
         {
             base.Initialize();
 
-            basededatos.CrearPlayer(0, null);
-            basededatos.CrearSessions(1, null, 1, 0);
-            basededatos.CrearTablaClasificacion(1,basededatos.jugadorActual,basededatos.sesionActual);
+            basededatos.CrearPlayer(basededatos.jugadorActual, null, null);
+            basededatos.CrearSessions(basededatos.sesionActual, null, 1, 0);
+            basededatos.CrearTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
             basededatos.CrearCatalogoEnemigos(1, basededatos.sesionActual);
-            basededatos.CrearEnemyType(1,velocidadGlobal * 0.10f,"crab",1);
-            basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro",1);
-          
+            basededatos.CrearEnemyType(1, velocidadGlobal * 0.10f, "crab", 1);
+            basededatos.CrearEnemyType(2, velocidadGlobal * 0.30f, "electro", 1);
+            basededatos.CrearSessionResults(basededatos.sesionActual, 0f, "Partida en curso", 0, basededatos.sesionActual);
+
+
 
 
 
@@ -201,16 +213,21 @@ namespace robot_defender
                 PuntoSpawn.Arriba => new Vector2(GraphicsDevice.Viewport.Width / 2f - TamañoEnemigo / 2f, 0),
                 PuntoSpawn.Derecha => new Vector2(GraphicsDevice.Viewport.Width - TamañoEnemigo, GraphicsDevice.Viewport.Height / 2f - TamañoEnemigo / 2f),
                 PuntoSpawn.Izquierda => new Vector2(0, GraphicsDevice.Viewport.Height / 2f - TamañoEnemigo / 2f),
-                PuntoSpawn.Abajo => new Vector2(GraphicsDevice.Viewport.Width / 2f - TamañoEnemigo / 2f, GraphicsDevice.Viewport.Height - TamañoEnemigo)
+                _ => new Vector2(GraphicsDevice.Viewport.Width / 2f - TamañoEnemigo / 2f, GraphicsDevice.Viewport.Height - TamañoEnemigo)
             };
         }
 
         private void IniciarOleada()
         {
-            
+
 
             dibujarTexto = true;
             temporizadorTexto = 0f;
+
+            //antes de empezar se limpia la BD por si quedan enemigos vivos al morirse
+            foreach (Enemigo enemigo in enemigos)
+                basededatos.EliminarEnemyInstance(enemigo.IdBD);
+
             enemigos.Clear();
             balas.Clear();
             puntosSpawnPendientes.Clear();
@@ -218,7 +235,13 @@ namespace robot_defender
             for (int i = 0; i < EnemigosActivosIniciales; i++)
             {
                 PuntoSpawn spawn = puntosSpawn[i];
-                enemigos.Add(new Enemigo(ObtenerPosicionSpawn(spawn), spawn));
+                Enemigo nuevoEnemigo = new Enemigo(ObtenerPosicionSpawn(spawn), spawn, siguienteIdEnemigo++);
+                enemigos.Add(nuevoEnemigo);
+
+                if (nuevoEnemigo.Spawn == PuntoSpawn.Abajo || nuevoEnemigo.Spawn == PuntoSpawn.Arriba)
+                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
+                else
+                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
             }
 
             for (int i = 0; i < ReservasPorOleada; i++)
@@ -229,43 +252,50 @@ namespace robot_defender
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            menuBackground = Content.Load<Texture2D>("menuBackground");
-            botonStartTexture = Content.Load<Texture2D>("botonStart (1)");
-            botonOpcionesTexture = Content.Load<Texture2D>("botonOpciones");
-            botonVolverTexture = Content.Load<Texture2D>("botonVolver");
-            botonMusicaTexture = Content.Load<Texture2D>("botonMusica");
+            menuBackground = Content.Load<Texture2D>("sprites/menuBackground");
+            botonStartTexture = Content.Load<Texture2D>("sprites/botonStart (1)");
+            botonOpcionesTexture = Content.Load<Texture2D>("sprites/botonOpciones");
+            botonVolverTexture = Content.Load<Texture2D>("sprites/botonVolver");
+            botonMusicaTexture = Content.Load<Texture2D>("sprites/botonMusica");
 
-            pauseBoxTexture = Content.Load<Texture2D>("pauseBox");
-            botonReanudarTexture = Content.Load<Texture2D>("botonReanudar");
-            botonSalirMenuTexture = Content.Load<Texture2D>("botonSalir");
-            Gummy = Content.Load<Texture2D>("Gum Bot sprites");
-            moon = Content.Load<Texture2D>("FONDO");
-            Base = Content.Load<Texture2D>("Catbase");
-            corazonTexture = Content.Load<Texture2D>("corazones");
+            pauseBoxTexture = Content.Load<Texture2D>("sprites/pauseBox");
+            botonReanudarTexture = Content.Load<Texture2D>("sprites/botonReanudar");
+            botonSalirMenuTexture = Content.Load<Texture2D>("sprites/botonSalir");
+            Gummy = Content.Load<Texture2D>("sprites/Gum Bot sprites");
+            moon = Content.Load<Texture2D>("sprites/FONDO");
+            Base = Content.Load<Texture2D>("sprites/Catbase");
+            corazonTexture = Content.Load<Texture2D>("sprites/corazones");
 
-            enemigoAzul = Content.Load<Texture2D>("enemigoAzul");
-            crab = Content.Load<Texture2D>("crab");
-            laserRojo = Content.Load<Texture2D>("laserRojo");
-            misil = Content.Load<Texture2D>("misiles");
-            laserAzul = Content.Load<Texture2D>("laserAzul");
+            enemigoAzul = Content.Load<Texture2D>("sprites/enemigoAzul");
+            crab = Content.Load<Texture2D>("sprites/crab");
+            laserRojo = Content.Load<Texture2D>("sprites/laserRojo");
+            misil = Content.Load<Texture2D>("sprites/misiles");
+            laserAzul = Content.Load<Texture2D>("sprites/laserAzul");
 
             fuenteTexto = Content.Load<SpriteFont>("Minecraft");
 
-            menuSong = Content.Load<Song>("MenuBG");
-            gameSong = Content.Load<Song>("BG");
-            Laser1 = Content.Load<SoundEffect>("BubblePop");
+            menuSong = Content.Load<Song>("Sounds/menuBG");
+            gameSong = Content.Load<Song>("Sounds/BG");
+            Laser1 = Content.Load<SoundEffect>("Sounds/BubblePop");
 
             _pixel = new Texture2D(GraphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-            MediaPlayer.Play(menuSong);
-            MediaPlayer.IsRepeating = true;
+            //MediaPlayer.Play(menuSong);
+           // MediaPlayer.IsRepeating = true;
         }
 
         protected override void Update(GameTime gameTime)
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            {
+                LimpiarBaseDatos();
                 Exit();
+                return;
+            }
+
+            if (estadoActual == EstadoJuego.Jugando)
+                tiempoGlobal += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
             MouseState mouseState = Mouse.GetState();
             Rectangle cursorRect = new Rectangle(mouseState.X, mouseState.Y, 1, 1);
@@ -274,12 +304,12 @@ namespace robot_defender
             if (estadoActual == EstadoJuego.Menu)
             {
                 dibujarTexto = false;
-                if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
+                /*if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
                     MediaPlayer.Play(menuSong);
                     MediaPlayer.IsRepeating = true;
-                }
+                }*/
 
                 if (cursorRect.Intersects(botonStartRect) && mouseClicked)
                 {
@@ -297,11 +327,11 @@ namespace robot_defender
                 dibujarTexto = false;
                 if (cursorRect.Intersects(botonMusicaRect) && mouseClicked)
                 {
-                    musicaActiva = !musicaActiva;
+                  /*  musicaActiva = !musicaActiva;
                     if (musicaActiva)
                         MediaPlayer.Resume();
                     else
-                        MediaPlayer.Pause();
+                        MediaPlayer.Pause();*/
                 }
                 else if (cursorRect.Intersects(botonVolverRect) && mouseClicked)
                 {
@@ -320,12 +350,12 @@ namespace robot_defender
                     }
                 }
 
-                if (MediaPlayer.Queue.ActiveSong != gameSong && musicaActiva)
+               /* if (MediaPlayer.Queue.ActiveSong != gameSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
                     MediaPlayer.Play(gameSong);
                     MediaPlayer.IsRepeating = true;
-                }
+                }*/
 
                 if (Keyboard.GetState().IsKeyDown(Keys.P))
                 {
@@ -494,7 +524,7 @@ namespace robot_defender
                     _spriteBatch.Draw(
                         corazonTexture,
                         destinationRectangle: new Rectangle((int)posicionCorazon.X, (int)posicionCorazon.Y, corazonAncho, corazonAlto),
-                        sourceRectangle: new Rectangle(131,158,corazonAncho / 2,corazonAlto - 5),
+                        sourceRectangle: new Rectangle(131, 158, corazonAncho / 2, corazonAlto - 5),
                         //                       offsetX,offsetY,/2 pq aparecian 2, - 5 pq quedaba muy alto
                         color: colorCorazon
                     );
@@ -609,17 +639,33 @@ namespace robot_defender
             }
         }
 
+        private void LimpiarBaseDatos()
+        {
+            if (limpiezaBaseDatosEjecutada)
+                return;
+
+            // Estos procedimientos eliminan primero los registros dependientes.
+            basededatos.EliminarSessions(basededatos.sesionActual);
+            basededatos.EliminarPlayer(basededatos.jugadorActual);
+
+            limpiezaBaseDatosEjecutada = true;
+        }
+
         private void muere()
         {
+            basededatos.ActualizarSessions(basededatos.sesionActual, DateTime.Now, OleadaActual, (int)tiempoGlobal, 1);
+            basededatos.ActualizarSessionResults(basededatos.sesionActual, (int)tiempoGlobal, ultimoatacante, enemigosDestruidos, basededatos.sesionActual);
+            basededatos.ActualizarPlayer(basededatos.jugadorActual, OleadaActual, (int)tiempoGlobal);
+            basededatos.ActualizarTablaClasificacion(1, basededatos.jugadorActual, basededatos.sesionActual);
+
             posicion.X = 350;
             posicion.Y = 250;
             vidas = 5;
             estadoActual = EstadoJuego.Menu;
 
-            basededatos.CrearSessionResults(1,tiempoTranscurrido,ultimoatacante,enemigosDestruidos,basededatos.sesionActual);
-
             IniciarOleada();
             dibujarTexto = false;
+            basededatos.jugadorActual++;
         }
 
         private Rectangle ObtenerHitbox(Enemigo enemigo)
@@ -642,7 +688,7 @@ namespace robot_defender
         }
 
         private void ActualizarEnemigos(GameTime gameTime)
-        {   
+        {
 
 
             float centroBaseX = hitboxBase.X + hitboxBase.Width / 2f;
@@ -726,7 +772,10 @@ namespace robot_defender
                 origen.X - TamañoBalaEnemigo / 2f,
                 origen.Y - TamañoBalaEnemigo / 2f);
 
-            balas.Add(new Bala(posicionBala, new Vector2(direccionX, direccionY), false, esLateral));
+            basededatos.CrearCombatLogs(basededatos.log, "Disparo enemigo", origen, new Vector2(destinoX, destinoY),tiempoGlobal, basededatos.sesionActual);
+            basededatos.log++;
+
+            balas.Add(new Bala(posicionBala, new Vector2(direccionX, direccionY), false, esLateral, origen));
         }
 
         private void ActualizarBalas()
@@ -745,11 +794,11 @@ namespace robot_defender
                     {
                         if (hitboxBala.Intersects(ObtenerHitbox(enemigos[j])))
                         {
-                            basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y), basededatos.sesionActual);
+                            basededatos.CrearCombatLogs(basededatos.log, "Disparo jugador", posicion, new Vector2(enemigos[j].Posicion.X, enemigos[j].Posicion.Y),tiempoGlobal, basededatos.sesionActual);
                             basededatos.log++;
                             indiceEnemigo = j;
                             enemigosDestruidos++;
-                            
+
 
                             break;
                         }
@@ -757,6 +806,7 @@ namespace robot_defender
 
                     if (indiceEnemigo >= 0)
                     {
+                        basededatos.EliminarEnemyInstance(enemigos[indiceEnemigo].IdBD);
                         enemigos.RemoveAt(indiceEnemigo);
                         balas.RemoveAt(i);
                         ReponerEnemigo();
@@ -766,10 +816,7 @@ namespace robot_defender
                 else if (hitboxBala.Intersects(hitboxBase))
                 {
                     vidas--;
-                                                                                             //esto creo q esta mal,el I es de las balas pero bno :p
-                    basededatos.CrearCombatLogs(basededatos.log, "Disparo enemigo", new Vector2(enemigos[i].Posicion.X, enemigos[i].Posicion.Y),new Vector2(hitboxBase.X,hitboxBase.Y),basededatos.sesionActual);
-                    basededatos.log++;
-                    ultimoatacante = (bala.EsLateralEnemigo) ? "Laser de electro" : "Misil de un crab" ;
+                    ultimoatacante = (bala.EsLateralEnemigo) ? "Laser de electro" : "Misil de un crab";
                     balas.RemoveAt(i);
                     balaSigueActiva = false;
                 }
@@ -798,7 +845,14 @@ namespace robot_defender
             {
                 PuntoSpawn spawn = puntosSpawnPendientes[0];
                 puntosSpawnPendientes.RemoveAt(0);
-                enemigos.Add(new Enemigo(ObtenerPosicionSpawn(spawn), spawn));
+
+                Enemigo nuevoEnemigo = new Enemigo(ObtenerPosicionSpawn(spawn), spawn, siguienteIdEnemigo++);
+                enemigos.Add(nuevoEnemigo);
+
+                if (nuevoEnemigo.Spawn == PuntoSpawn.Abajo || nuevoEnemigo.Spawn == PuntoSpawn.Arriba)
+                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 1);
+                else
+                    basededatos.CrearEnemyInstance(nuevoEnemigo.IdBD, IntervaloDisparoEnemigo, nuevoEnemigo.Posicion.X, nuevoEnemigo.Posicion.Y, 2);
             }
         }
 
