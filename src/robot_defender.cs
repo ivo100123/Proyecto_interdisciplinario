@@ -486,8 +486,7 @@ namespace robot_defender
                     _spriteBatch.Draw(corazonTexture, destinoBarra, sourceRectBarra, Color.White);
                 }
 
-                _spriteBatch.Draw(_pixel, hitboxAlien, Color.Red * 0.4f);
-                _spriteBatch.Draw(_pixel, hitboxMapa, Color.Yellow * 0.2f);
+
 
                 foreach (Enemigo enemigo in enemigos)
                 {
