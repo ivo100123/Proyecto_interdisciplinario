@@ -281,8 +281,8 @@ namespace robot_defender
             _pixel = new Texture2D(GraphicsDevice, 1, 1);
             _pixel.SetData(new[] { Color.White });
 
-            //MediaPlayer.Play(menuSong);
-           // MediaPlayer.IsRepeating = true;
+            MediaPlayer.Play(menuSong);
+           MediaPlayer.IsRepeating = true;
         }
 
         protected override void Update(GameTime gameTime)
@@ -304,12 +304,12 @@ namespace robot_defender
             if (estadoActual == EstadoJuego.Menu)
             {
                 dibujarTexto = false;
-                /*if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
+                if (MediaPlayer.Queue.ActiveSong != menuSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
                     MediaPlayer.Play(menuSong);
                     MediaPlayer.IsRepeating = true;
-                }*/
+                }
 
                 if (cursorRect.Intersects(botonStartRect) && mouseClicked)
                 {
@@ -327,11 +327,11 @@ namespace robot_defender
                 dibujarTexto = false;
                 if (cursorRect.Intersects(botonMusicaRect) && mouseClicked)
                 {
-                  /*  musicaActiva = !musicaActiva;
+                   musicaActiva = !musicaActiva;
                     if (musicaActiva)
                         MediaPlayer.Resume();
                     else
-                        MediaPlayer.Pause();*/
+                        MediaPlayer.Pause();
                 }
                 else if (cursorRect.Intersects(botonVolverRect) && mouseClicked)
                 {
@@ -350,12 +350,12 @@ namespace robot_defender
                     }
                 }
 
-               /* if (MediaPlayer.Queue.ActiveSong != gameSong && musicaActiva)
+               if (MediaPlayer.Queue.ActiveSong != gameSong && musicaActiva)
                 {
                     MediaPlayer.Stop();
                     MediaPlayer.Play(gameSong);
-                    MediaPlayer.IsRepeating = true;
-                }*/
+                   MediaPlayer.IsRepeating = true;
+                }
 
                 if (Keyboard.GetState().IsKeyDown(Keys.P))
                 {
