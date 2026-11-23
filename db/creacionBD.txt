@@ -80,3 +80,352 @@ create table SessionResults
     primary key(id),
     foreign key(SessionsFK) references Sessions(id) 
 );
+
+
+
+USE robot_defender;
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS CrearPlayer$$
+CREATE PROCEDURE CrearPlayer(
+	IN p_id INT,
+	IN p_oleadaMax INT,
+	IN p_tiempoDefendido FLOAT
+)
+BEGIN
+	INSERT INTO Player (id, oleadaMax, tiempoMaximo)
+	VALUES (p_id, p_oleadaMax, p_tiempoDefendido)
+	ON DUPLICATE KEY UPDATE
+		oleadaMax = COALESCE(p_oleadaMax, oleadaMax),
+		tiempoMaximo = COALESCE(p_tiempoDefendido, tiempoMaximo);
+END$$
+
+DROP PROCEDURE IF EXISTS CrearSessions$$
+CREATE PROCEDURE CrearSessions(
+	IN p_id INT,
+	IN p_fechaFin DATE,
+	IN p_oleada INT,
+	IN p_tiempoDefendido FLOAT
+)
+BEGIN
+	INSERT INTO Sessions (id, fechaFin, oleada, tiempoDefendido)
+	VALUES (p_id, p_fechaFin, p_oleada, p_tiempoDefendido)
+	ON DUPLICATE KEY UPDATE
+		fechaFin = p_fechaFin,
+		oleada = p_oleada,
+		tiempoDefendido = p_tiempoDefendido;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarSessions$$
+CREATE PROCEDURE ActualizarSessions(
+	IN p_id INT,
+	IN p_fechaFin DATE,
+	IN p_oleada INT,
+	IN p_tiempoDefendido FLOAT,
+	IN p_catalogoEnemigosFK INT
+)
+BEGIN
+	-- Se conserva p_catalogoEnemigosFK por compatibilidad con ConexionBD.
+	-- La tabla Sessions del esquema no contiene esa columna.
+	UPDATE Sessions
+	SET fechaFin = p_fechaFin,
+		oleada = p_oleada,
+		tiempoDefendido = p_tiempoDefendido
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearTablaClasificacion$$
+CREATE PROCEDURE CrearTablaClasificacion(
+	IN p_id INT,
+	IN p_playerFK INT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	INSERT INTO TablaClasificacion (id, PlayerFK, SessionsFK)
+	VALUES (p_id, p_playerFK, p_sessionsFK)
+	ON DUPLICATE KEY UPDATE
+		PlayerFK = p_playerFK,
+		SessionsFK = p_sessionsFK;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearCatalogoEnemigos$$
+CREATE PROCEDURE CrearCatalogoEnemigos(
+	IN p_id INT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	INSERT INTO catalogoEnemigos (id, SessionsFK)
+	VALUES (p_id, p_sessionsFK)
+	ON DUPLICATE KEY UPDATE SessionsFK = p_sessionsFK;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearEnemyType$$
+CREATE PROCEDURE CrearEnemyType(
+	IN p_id INT,
+	IN p_velocidad FLOAT,
+	IN p_nombre VARCHAR(20),
+	IN p_catalogoEnemigosFK INT
+)
+BEGIN
+	INSERT INTO EnemyType (id, velocidad, nombre, catalogoEnemigosFK)
+	VALUES (p_id, p_velocidad, p_nombre, p_catalogoEnemigosFK)
+	ON DUPLICATE KEY UPDATE
+		velocidad = p_velocidad,
+		nombre = p_nombre,
+		catalogoEnemigosFK = p_catalogoEnemigosFK;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearEnemyInstance$$
+CREATE PROCEDURE CrearEnemyInstance(
+	IN p_id INT,
+	IN p_velocidadDisparo FLOAT,
+	IN p_x FLOAT,
+	IN p_y FLOAT,
+	IN p_enemyTypeFK INT
+)
+BEGIN
+	INSERT INTO EnemyInstance (id, velocidadDisparo, x, y, EnemyTypeFK)
+	VALUES (p_id, p_velocidadDisparo, p_x, p_y, p_enemyTypeFK)
+	ON DUPLICATE KEY UPDATE
+		velocidadDisparo = p_velocidadDisparo,
+		x = p_x,
+		y = p_y,
+		EnemyTypeFK = p_enemyTypeFK;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearCombatLogs$$
+CREATE PROCEDURE CrearCombatLogs(
+	IN p_id INT,
+	IN p_tipoAccion VARCHAR(50),
+	IN p_origen VARCHAR(50),
+	IN p_destino VARCHAR(50),
+	IN p_stamptime FLOAT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	INSERT INTO CombatLogs (id, tipoAccion, origen, destino, stamptime, SessionsFK)
+	VALUES (p_id, p_tipoAccion, p_origen, p_destino, p_stamptime, p_sessionsFK)
+	ON DUPLICATE KEY UPDATE
+		tipoAccion = p_tipoAccion,
+		origen = p_origen,
+		destino = p_destino,
+		stamptime = p_stamptime,
+		SessionsFK = p_sessionsFK;
+END$$
+
+DROP PROCEDURE IF EXISTS CrearSessionResults$$
+CREATE PROCEDURE CrearSessionResults(
+	IN p_id INT,
+	IN p_tiempoMuerte FLOAT,
+	IN p_motivoFin VARCHAR(50),
+	IN p_enemigosDestruidos INT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	INSERT INTO SessionResults (id, tiempoMuerte, motivoFin, enemigosDestruidos, SessionsFK)
+	VALUES (p_id, p_tiempoMuerte, p_motivoFin, p_enemigosDestruidos, p_sessionsFK)
+	ON DUPLICATE KEY UPDATE
+		tiempoMuerte = p_tiempoMuerte,
+		motivoFin = p_motivoFin,
+		enemigosDestruidos = p_enemigosDestruidos,
+		SessionsFK = p_sessionsFK;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarTablaClasificacion$$
+CREATE PROCEDURE EliminarTablaClasificacion(IN p_id INT)
+BEGIN
+	DELETE FROM TablaClasificacion WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarEnemyType$$
+CREATE PROCEDURE EliminarEnemyType(IN p_id INT)
+BEGIN
+	DELETE FROM EnemyInstance WHERE EnemyTypeFK = p_id;
+	DELETE FROM EnemyType WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarCatalogoEnemigos$$
+CREATE PROCEDURE EliminarCatalogoEnemigos(IN p_id INT)
+BEGIN
+	DELETE FROM EnemyInstance
+	WHERE EnemyTypeFK IN (
+		SELECT id FROM EnemyType WHERE catalogoEnemigosFK = p_id
+	);
+	DELETE FROM EnemyType WHERE catalogoEnemigosFK = p_id;
+	DELETE FROM catalogoEnemigos WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarSessions$$
+CREATE PROCEDURE EliminarSessions(IN p_id INT)
+BEGIN
+	DELETE FROM CombatLogs WHERE SessionsFK = p_id;
+	DELETE FROM SessionResults WHERE SessionsFK = p_id;
+	DELETE FROM TablaClasificacion WHERE SessionsFK = p_id;
+
+	DELETE FROM EnemyInstance
+	WHERE EnemyTypeFK IN (
+		SELECT et.id
+		FROM EnemyType AS et
+		INNER JOIN catalogoEnemigos AS ce
+			ON ce.id = et.catalogoEnemigosFK
+		WHERE ce.SessionsFK = p_id
+	);
+
+	DELETE et
+	FROM EnemyType AS et
+	INNER JOIN catalogoEnemigos AS ce
+		ON ce.id = et.catalogoEnemigosFK
+	WHERE ce.SessionsFK = p_id;
+
+	DELETE FROM catalogoEnemigos WHERE SessionsFK = p_id;
+	DELETE FROM Sessions WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarPlayer$$
+CREATE PROCEDURE EliminarPlayer(IN p_id INT)
+BEGIN
+	DELETE FROM TablaClasificacion WHERE PlayerFK = p_id;
+	DELETE FROM Player WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarPlayer$$
+CREATE PROCEDURE ListarPlayer()
+BEGIN
+	SELECT * FROM Player;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarPlayer$$
+CREATE PROCEDURE ActualizarPlayer(
+	IN p_id INT,
+	IN p_oleadaMax INT,
+	IN p_tiempoDefendido FLOAT
+)
+BEGIN
+	UPDATE Player
+	SET oleadaMax = p_oleadaMax,
+		tiempoMaximo = p_tiempoDefendido
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarTablaClasificacion$$
+CREATE PROCEDURE ListarTablaClasificacion()
+BEGIN
+	SELECT * FROM TablaClasificacion;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarTablaClasificacion$$
+CREATE PROCEDURE ActualizarTablaClasificacion(
+	IN p_id INT,
+	IN p_playerFK INT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	UPDATE TablaClasificacion
+	SET PlayerFK = p_playerFK,
+		SessionsFK = p_sessionsFK
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarSessions$$
+CREATE PROCEDURE ListarSessions()
+BEGIN
+	SELECT * FROM Sessions;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarEnemyType$$
+CREATE PROCEDURE ListarEnemyType()
+BEGIN
+	SELECT * FROM EnemyType;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarEnemyInstance$$
+CREATE PROCEDURE ListarEnemyInstance()
+BEGIN
+	SELECT * FROM EnemyInstance;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarEnemyInstance$$
+CREATE PROCEDURE ActualizarEnemyInstance(
+	IN p_id INT,
+	IN p_velocidadDisparo FLOAT,
+	IN p_x FLOAT,
+	IN p_y FLOAT,
+	IN p_enemyTypeFK INT
+)
+BEGIN
+	UPDATE EnemyInstance
+	SET velocidadDisparo = p_velocidadDisparo,
+		x = p_x,
+		y = p_y,
+		EnemyTypeFK = p_enemyTypeFK
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarEnemyInstance$$
+CREATE PROCEDURE EliminarEnemyInstance(IN p_id INT)
+BEGIN
+	DELETE FROM EnemyInstance WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarCombatLogs$$
+CREATE PROCEDURE ListarCombatLogs()
+BEGIN
+	SELECT * FROM CombatLogs;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarCombatLogs$$
+CREATE PROCEDURE ActualizarCombatLogs(
+	IN p_id INT,
+	IN p_tipoAccion VARCHAR(50),
+	IN p_origen VARCHAR(50),
+	IN p_destino VARCHAR(50),
+	IN p_stamptime FLOAT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	UPDATE CombatLogs
+	SET tipoAccion = p_tipoAccion,
+		origen = p_origen,
+		destino = p_destino,
+		stamptime = p_stamptime,
+		SessionsFK = p_sessionsFK
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarCombatLogs$$
+CREATE PROCEDURE EliminarCombatLogs(IN p_id INT)
+BEGIN
+	DELETE FROM CombatLogs WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS ListarSessionResults$$
+CREATE PROCEDURE ListarSessionResults()
+BEGIN
+	SELECT * FROM SessionResults;
+END$$
+
+DROP PROCEDURE IF EXISTS ActualizarSessionResults$$
+CREATE PROCEDURE ActualizarSessionResults(
+	IN p_id INT,
+	IN p_tiempoMuerte FLOAT,
+	IN p_motivoFin VARCHAR(50),
+	IN p_enemigosDestruidos INT,
+	IN p_sessionsFK INT
+)
+BEGIN
+	UPDATE SessionResults
+	SET tiempoMuerte = p_tiempoMuerte,
+		motivoFin = p_motivoFin,
+		enemigosDestruidos = p_enemigosDestruidos,
+		SessionsFK = p_sessionsFK
+	WHERE id = p_id;
+END$$
+
+DROP PROCEDURE IF EXISTS EliminarSessionResults$$
+CREATE PROCEDURE EliminarSessionResults(IN p_id INT)
+BEGIN
+	DELETE FROM SessionResults WHERE id = p_id;
+END$$
+
+DELIMITER ;
